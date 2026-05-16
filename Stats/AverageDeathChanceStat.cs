@@ -134,15 +134,15 @@ namespace Celeste.Mod.ConsistencyTracker.Stats {
 
         public override List<KeyValuePair<string, string>> GetPlaceholderExplanations() {
             return new List<KeyValuePair<string, string>>() {
-                new KeyValuePair<string, string>("{chapter:averageDeathChance#X}", "Probability of clearing the chapter with at most X deaths, based on room success rates"),
-                new KeyValuePair<string, string>("{checkpoint:averageDeathChance#X}", "Probability of clearing the current checkpoint with at most X deaths, based on room success rates"),
+                new KeyValuePair<string, string>("{chapter:averageDeathChance#X}", "Probability of clearing the chapter with at most X deaths on average, based on room success rates"),
+                new KeyValuePair<string, string>("{checkpoint:averageDeathChance#X}", "Probability of clearing the current checkpoint with at most X deaths on average, based on room success rates"),
             };
         }
 
         public override List<StatFormat> GetDefaultFormats() {
             return new List<StatFormat>() {
-                new StatFormat("death-chance-0", $"0-death chance: {{chapter:averageDeathChance#0}}"),
-                new StatFormat("death-chance-1", $"At most 1 death: {{chapter:averageDeathChance#1}}"),
+                new StatFormat("death-chance-0", $"0-death chance on average: {{chapter:averageDeathChance#0}}"),
+                new StatFormat("death-chance-1", $"At most 1 death on average: {{chapter:averageDeathChance#1}}"),
             };
         }
     }
