@@ -32,6 +32,7 @@ namespace Celeste.Mod.ConsistencyTracker.Stats {
             new ListRoomNamesStat(),
             new ListSuccessRatesStat(),
             new ListChokeRatesStat(),
+            new RunDeathChanceStat(),
         };
 
         public static string BaseFolder = "live-data";
