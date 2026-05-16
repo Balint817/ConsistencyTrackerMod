@@ -7,6 +7,7 @@ namespace Celeste.Mod.ConsistencyTracker.Stats {
 
     /*
      {chapter:runDeathChance#x} - Probability of clearing the chapter with at most X deaths, based on room success rates
+     {checkpoint:runDeathChance#x} - Probability of clearing the current checkpoint with at most X deaths, based on room success rates
          */
 
     public class RunDeathChanceStat : Stat {
@@ -16,41 +17,70 @@ namespace Celeste.Mod.ConsistencyTracker.Stats {
             "{chapter:runDeathChance#(.*?)}"
         );
 
+        public static ValuePlaceholder<int> CheckpointRunDeathChanceOverX = new ValuePlaceholder<int>(
+            @"\{checkpoint:runDeathChance#(.*?)\}",
+            "{checkpoint:runDeathChance#(.*?)}"
+        );
+
         public static List<string> IDs = new List<string>();
 
         public RunDeathChanceStat() : base(IDs) { }
 
         public override bool ContainsIdentificator(string format) {
-            return ChapterRunDeathChanceOverX.HasMatch(format);
+            return ChapterRunDeathChanceOverX.HasMatch(format) || CheckpointRunDeathChanceOverX.HasMatch(format);
         }
 
         public override string FormatStat(PathInfo chapterPath, ChapterStats chapterStats, string format) {
             if (chapterPath == null) {
                 format = ChapterRunDeathChanceOverX.ReplaceAll(format, StatManager.MissingPathOutput);
+                format = CheckpointRunDeathChanceOverX.ReplaceAll(format, StatManager.MissingPathOutput);
                 return format;
             }
 
             format = ChapterRunDeathChanceOverX.ReplaceMatchException(format);
+            format = CheckpointRunDeathChanceOverX.ReplaceMatchException(format);
 
-            List<int> matchList = ChapterRunDeathChanceOverX.GetMatchList(format);
-            if (matchList.Count == 0) return format;
+            List<int> chapterMatchList = ChapterRunDeathChanceOverX.GetMatchList(format);
+            List<int> checkpointMatchList = CheckpointRunDeathChanceOverX.GetMatchList(format);
 
             // Collect success rates for all rooms on the path
-            List<double> successRates = new List<double>();
+            List<double> chapterSuccessRates = new List<double>();
+            List<double> checkpointSuccessRates = null;
+
             foreach (CheckpointInfo cpInfo in chapterPath.Checkpoints) {
+                bool isCurrentCheckpoint = false;
+                List<double> cpSuccessRates = new List<double>();
+
                 foreach (RoomInfo rInfo in cpInfo.Rooms) {
                     if (rInfo.IsNonGameplayRoom) continue;
-                    double sr = chapterStats.GetRoom(rInfo.DebugRoomName).AverageSuccessOverN(StatManager.AttemptCount);
-                    if (StatManager.IgnoreUnplayedRooms && chapterStats.GetRoom(rInfo.DebugRoomName).IsUnplayed)
+                    RoomStats rStats = chapterStats.GetRoom(rInfo.DebugRoomName);
+                    double sr = rStats.AverageSuccessOverN(StatManager.AttemptCount);
+                    if (StatManager.IgnoreUnplayedRooms && rStats.IsUnplayed)
                         sr = 1.0;
-                    successRates.Add(sr);
+
+                    chapterSuccessRates.Add(sr);
+                    cpSuccessRates.Add(sr);
+
+                    if (rInfo.DebugRoomName == chapterStats.CurrentRoom.DebugRoomName)
+                        isCurrentCheckpoint = true;
                 }
+
+                if (isCurrentCheckpoint)
+                    checkpointSuccessRates = cpSuccessRates;
             }
 
-            foreach (int maxDeaths in matchList) {
-                double probability = ClearProbability(successRates, maxDeaths);
-                string formatted = StatManager.FormatPercentage(probability);
-                format = format.Replace($"{{chapter:runDeathChance#{maxDeaths}}}", formatted);
+            foreach (int maxDeaths in chapterMatchList) {
+                double probability = ClearProbability(chapterSuccessRates, maxDeaths);
+                format = format.Replace($"{{chapter:runDeathChance#{maxDeaths}}}", StatManager.FormatPercentage(probability));
+            }
+
+            foreach (int maxDeaths in checkpointMatchList) {
+                if (checkpointSuccessRates == null) {
+                    format = StatManager.NotOnPathFormatPercent(format, $"{{checkpoint:runDeathChance#{maxDeaths}}}");
+                } else {
+                    double probability = ClearProbability(checkpointSuccessRates, maxDeaths);
+                    format = format.Replace($"{{checkpoint:runDeathChance#{maxDeaths}}}", StatManager.FormatPercentage(probability));
+                }
             }
 
             return format;
@@ -102,6 +132,7 @@ namespace Celeste.Mod.ConsistencyTracker.Stats {
         public override List<KeyValuePair<string, string>> GetPlaceholderExplanations() {
             return new List<KeyValuePair<string, string>>() {
                 new KeyValuePair<string, string>("{chapter:runDeathChance#X}", "Probability of clearing the chapter with at most X deaths, based on room success rates"),
+                new KeyValuePair<string, string>("{checkpoint:runDeathChance#X}", "Probability of clearing the current checkpoint with at most X deaths, based on room success rates"),
             };
         }
 
